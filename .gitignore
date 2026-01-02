@@ -1,0 +1,11 @@
+.idea
+.vscode
+/target
+Cargo.lock
+.backend*
+.builder*
+/wasm
+.env
+DEPLOYMENT.md
+.DS_Store
+*.log
