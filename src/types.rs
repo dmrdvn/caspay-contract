@@ -34,9 +34,10 @@ pub struct Product {
 #[odra::odra_type]
 #[derive(Copy)]
 pub enum SubscriptionInterval {
-    Weekly = 0,
-    Monthly = 1,
-    Yearly = 2,
+    Day = 0,
+    Week = 1,
+    Month = 2,
+    Year = 3,
 }
 
 #[odra::odra_type]

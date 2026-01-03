@@ -110,12 +110,12 @@ mod tests {
         let plan_id = String::from("plan_monthly");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(99u64), SubscriptionInterval::Monthly, 1, 7
+            U256::from(99u64), SubscriptionInterval::Month, 1, 7
         );
         
         let plan = contract.get_subscription_plan(plan_id).expect("Plan should exist");
         assert_eq!(plan.trial_days, 7);
-        assert_eq!(plan.interval, SubscriptionInterval::Monthly);
+        assert_eq!(plan.interval, SubscriptionInterval::Month);
     }
 
     // ==================== PAYMENT TESTS ====================
@@ -175,7 +175,7 @@ mod tests {
         let plan_id = String::from("plan_basic");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(50u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
         );
         
         let subscription_id = String::from("sub_001");
@@ -200,7 +200,7 @@ mod tests {
         let plan_id = String::from("plan_cancel");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(50u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
         );
         
         let subscription_id = String::from("sub_cancel");
@@ -213,6 +213,69 @@ mod tests {
         let subscription = contract.get_subscription(subscription_id.clone()).unwrap();
         assert_eq!(subscription.status, SubscriptionStatus::Cancelled);
         assert!(!contract.check_subscription(subscription_id));
+    }
+
+    #[test]
+    fn test_expire_subscription() {
+        let (test_env, mut contract, admin, merchant_wallet) = setup();
+        let subscriber = test_env.get_account(2);
+        test_env.set_caller(admin);
+        
+        let merchant_id = String::from("merchant_expire");
+        contract.register_merchant(merchant_id.clone(), merchant_wallet);
+        
+        let plan_id = String::from("plan_expire");
+        contract.create_subscription_plan(
+            merchant_id.clone(), plan_id.clone(),
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
+        );
+        
+        let subscription_id = String::from("sub_expire");
+        contract.create_subscription(
+            subscription_id.clone(), merchant_id, subscriber, plan_id
+        );
+        
+        // Expire subscription
+        contract.expire_subscription(subscription_id.clone());
+        
+        let subscription = contract.get_subscription(subscription_id.clone()).unwrap();
+        assert_eq!(subscription.status, SubscriptionStatus::Expired);
+        assert!(!contract.check_subscription(subscription_id));
+    }
+
+    #[test]
+    fn test_renew_subscription() {
+        let (test_env, mut contract, admin, merchant_wallet) = setup();
+        let subscriber = test_env.get_account(2);
+        test_env.set_caller(admin);
+        
+        let merchant_id = String::from("merchant_renew");
+        contract.register_merchant(merchant_id.clone(), merchant_wallet);
+        
+        let plan_id = String::from("plan_renew");
+        contract.create_subscription_plan(
+            merchant_id.clone(), plan_id.clone(),
+            U256::from(99u64), SubscriptionInterval::Month, 1, 0
+        );
+        
+        let subscription_id = String::from("sub_renew");
+        contract.create_subscription(
+            subscription_id.clone(), merchant_id, subscriber, plan_id
+        );
+        
+        // Expire first
+        contract.expire_subscription(subscription_id.clone());
+        let expired_sub = contract.get_subscription(subscription_id.clone()).unwrap();
+        assert_eq!(expired_sub.status, SubscriptionStatus::Expired);
+        
+        // Renew subscription
+        contract.renew_subscription(subscription_id.clone());
+        
+        let renewed_sub = contract.get_subscription(subscription_id.clone()).unwrap();
+        assert_eq!(renewed_sub.status, SubscriptionStatus::Active);
+        assert!(!renewed_sub.cancel_at_period_end);
+        assert!(renewed_sub.cancelled_at.is_none());
+        assert!(contract.check_subscription(subscription_id));
     }
 
     // ==================== SUBSCRIPTION QUERY TESTS ====================
@@ -229,7 +292,7 @@ mod tests {
         let plan_id = String::from("plan_query");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(50u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
         );
         
         let subscription_id = String::from("sub_query");
@@ -260,7 +323,7 @@ mod tests {
         let plan_id = String::from("plan_details");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(99u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(99u64), SubscriptionInterval::Month, 1, 0
         );
         
         let subscription_id = String::from("sub_details");
@@ -324,7 +387,7 @@ mod tests {
         test_env.set_caller(non_admin);
         contract.create_subscription_plan(
             merchant_id, String::from("plan_001"),
-            U256::from(50u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
         );
     }
 
@@ -396,7 +459,7 @@ mod tests {
         let plan_id = String::from("plan_auth");
         contract.create_subscription_plan(
             merchant_id.clone(), plan_id.clone(),
-            U256::from(50u64), SubscriptionInterval::Monthly, 1, 0
+            U256::from(50u64), SubscriptionInterval::Month, 1, 0
         );
         
         // Switch to non-admin

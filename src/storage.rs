@@ -1,5 +1,4 @@
 use odra::prelude::*;
-use odra::casper_types::U256;
 use crate::types::*;
 
 /// Storage module for CasPay contract
@@ -27,18 +26,10 @@ pub struct CasPayStorage {
     // Merchant balances - Dictionary: "merchant_id:token_address" => MerchantBalance
     // Token address is required to track different tokens (CSPR, USDT, USDC, etc.)
     pub merchant_balances: Mapping<String, MerchantBalance>,
-    
-    // Total platform revenue collected
-    pub total_platform_revenue: Var<U256>,
 }
 
 #[odra::module]
 impl CasPayStorage {
-    /// Initialize storage with default values
-    pub fn init(&mut self) {
-        self.total_platform_revenue.set(U256::zero());
-    }
-    
     /// Check if merchant exists
     pub fn merchant_exists(&self, merchant_id: &String) -> bool {
         self.merchants.get(merchant_id).is_some()
@@ -124,16 +115,5 @@ impl CasPayStorage {
     /// Set merchant balance
     pub fn set_merchant_balance(&mut self, balance_key: String, balance: MerchantBalance) {
         self.merchant_balances.set(&balance_key, balance);
-    }
-    
-    /// Add to platform revenue
-    pub fn add_platform_revenue(&mut self, amount: U256) {
-        let current = self.total_platform_revenue.get().unwrap_or(U256::zero());
-        self.total_platform_revenue.set(current + amount);
-    }
-    
-    /// Get total platform revenue
-    pub fn get_platform_revenue(&self) -> U256 {
-        self.total_platform_revenue.get().unwrap_or(U256::zero())
     }
 }

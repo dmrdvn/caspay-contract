@@ -39,7 +39,6 @@ impl CasPay {
                 paused: false,
             };
             self.storage.platform_config.set(config);
-            self.storage.init();
             
             self.env().emit_event(ConfigurationUpdated {
                 admin,
@@ -474,6 +473,81 @@ impl CasPay {
         });
     }
 
+    /// Expire subscription (admin only)
+    pub fn expire_subscription(&mut self, subscription_id: String) {
+        self.require_not_paused();
+        self.require_admin();
+
+        let mut subscription = self.storage
+            .get_subscription(&subscription_id)
+            .unwrap_or_revert_with(&self.env(), CasPayError::InvalidSubscription);
+
+        let old_status = subscription.status;
+        subscription.status = SubscriptionStatus::Expired;
+        subscription.updated_at = self.env().get_block_time();
+
+        self.storage.set_subscription(subscription_id.clone(), subscription.clone());
+
+        self.env().emit_event(SubscriptionStatusChanged {
+            merchant_id: subscription.merchant_id,
+            subscriber: subscription.subscriber,
+            plan_id: subscription.plan_id,
+            old_status: old_status as u8,
+            new_status: subscription.status as u8,
+            timestamp: self.env().get_block_time(),
+        });
+    }
+
+    /// Renew subscription (admin only)
+    pub fn renew_subscription(&mut self, subscription_id: String) {
+        self.require_not_paused();
+        self.require_admin();
+
+        let mut subscription = self.storage
+            .get_subscription(&subscription_id)
+            .unwrap_or_revert_with(&self.env(), CasPayError::InvalidSubscription);
+
+        let plan = self.storage
+            .get_plan(&subscription.plan_id)
+            .unwrap_or_revert_with(&self.env(), CasPayError::InvalidSubscriptionPlan);
+
+        if !plan.active {
+            self.env().revert(CasPayError::InvalidSubscriptionPlan);
+        }
+
+        let timestamp = self.env().get_block_time();
+        
+        // Calculate new period based on interval
+        let period_duration = match plan.interval {
+            SubscriptionInterval::Day => plan.interval_count as u64 * 86400,
+            SubscriptionInterval::Week => plan.interval_count as u64 * 7 * 86400,
+            SubscriptionInterval::Month => plan.interval_count as u64 * 30 * 86400,
+            SubscriptionInterval::Year => plan.interval_count as u64 * 365 * 86400,
+        };
+
+        subscription.current_period_start = timestamp;
+        subscription.current_period_end = timestamp + period_duration;
+        subscription.next_charge_date = Some(timestamp + period_duration);
+        subscription.status = SubscriptionStatus::Active;
+        subscription.cancel_at_period_end = false;
+        subscription.cancelled_at = None;
+        subscription.updated_at = timestamp;
+
+        self.storage.set_subscription(subscription_id.clone(), subscription.clone());
+
+        self.env().emit_event(SubscriptionCharged {
+            merchant_id: subscription.merchant_id,
+            subscriber: subscription.subscriber,
+            plan_id: subscription.plan_id,
+            amount: plan.price,
+            token_address: String::from("CSPR"), // Default token
+            period_start: subscription.current_period_start,
+            period_end: subscription.current_period_end,
+            success: true,
+            timestamp,
+        });
+    }
+
     // ==================== BALANCE & WITHDRAWAL ====================
 
     /// Get merchant balance for a specific token (read-only)
@@ -544,11 +618,6 @@ impl CasPay {
         let mut config = self.get_platform_config();
         config.paused = false;
         self.storage.platform_config.set(config);
-    }
-
-    /// Get platform revenue statistics (read-only)
-    pub fn get_platform_revenue(&self) -> U256 {
-        self.storage.get_platform_revenue()
     }
 
     // ==================== HELPER FUNCTIONS ====================
