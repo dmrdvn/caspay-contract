@@ -27,6 +27,11 @@ path = "bin/deploy_testnet.rs"
 required-features = ["livenet"]
 
 [[bin]]
+name = "deploy_mainnet"
+path = "bin/deploy_mainnet.rs"
+required-features = ["livenet"]
+
+[[bin]]
 name = "caspay_build_contract"
 path = "bin/build_contract.rs"
 
