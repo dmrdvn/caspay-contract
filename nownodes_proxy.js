@@ -107,7 +107,7 @@ const server = http.createServer((req, res) => {
 server.listen(LOCAL_PORT, '127.0.0.1', () => {
   console.log('NowNodes Mainnet Proxy running on http://127.0.0.1:7778');
   console.log('Forwarding to:', NOWNODES_URL);
-  console.log('Using API Key:', NOWNODES_API_KEY.substring(0, 20) + '...');
+  console.log('Using API Key: [configured, length=' + (NOWNODES_API_KEY ? NOWNODES_API_KEY.length : 0) + ']');
   console.log('Ready for mainnet deployment!');
   console.log('Run: cargo run --bin deploy_mainnet --features=livenet');
   console.log('');
