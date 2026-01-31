@@ -104,7 +104,6 @@ const server = http.createServer((req, res) => {
 server.listen(LOCAL_PORT, '127.0.0.1', () => {
   console.log('🚀 CSPR.cloud Proxy running on http://127.0.0.1:7778');
   console.log('📡 Forwarding to:', CSPR_CLOUD_URL);
-  console.log('🔑 Using token: [configured, length=' + (CSPR_CLOUD_TOKEN ? CSPR_CLOUD_TOKEN.length : 0) + ']');
   console.log('');
   console.log('✅ Ready for contract deployment!');
   console.log('   Run: cargo run --bin deploy_testnet --features=livenet');
